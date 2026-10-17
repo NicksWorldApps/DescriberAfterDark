@@ -37,6 +37,7 @@ internal sealed class MainForm : Form
     private bool _ready;
     private bool _exiting;
     private readonly Button _helpButton = new();
+    private readonly Button _modelsButton = new();
 
     // Remembers the last image described, so pressing the shortcut again on the same clipboard is caught.
     private string? _lastDescribedKey;
@@ -122,12 +123,16 @@ internal sealed class MainForm : Form
         _helpButton.AutoSize = true;
         _helpButton.Click += (_, _) => ShowInstructions(speak: true);
 
+        _modelsButton.Text = "Choose &model";
+        _modelsButton.AutoSize = true;
+        _modelsButton.Click += async (_, _) => await OpenModelsAsync();
+
         _hideButton.Text = "&Hide to tray";
         _hideButton.AutoSize = true;
         _hideButton.Click += (_, _) => HideToTray();
 
         var buttons = new FlowLayoutPanel { AutoSize = true, Dock = DockStyle.Fill, Margin = new Padding(0, 8, 0, 0) };
-        buttons.Controls.AddRange(new Control[] { _askButton, _describeButton, _helpButton, _hideButton });
+        buttons.Controls.AddRange(new Control[] { _askButton, _describeButton, _modelsButton, _helpButton, _hideButton });
 
         layout.Controls.Add(_status, 0, 0);
         layout.Controls.Add(descriptionLabel, 0, 1);
@@ -139,7 +144,7 @@ internal sealed class MainForm : Form
 
         // Tab order follows reading order; labels come right before their boxes so Alt shortcuts work.
         var order = 0;
-        foreach (var c in new Control[] { _status, descriptionLabel, _description, questionLabel, _question, _askButton, _describeButton, _helpButton, _hideButton })
+        foreach (var c in new Control[] { _status, descriptionLabel, _description, questionLabel, _question, _askButton, _describeButton, _modelsButton, _helpButton, _hideButton })
             c.TabIndex = order++;
     }
 
@@ -148,6 +153,7 @@ internal sealed class MainForm : Form
         var menu = new ContextMenuStrip();
         menu.Items.Add("Show window", null, (_, _) => ShowFromTray());
         menu.Items.Add("Describe clipboard", null, async (_, _) => await DescribeClipboardAsync());
+        menu.Items.Add("Choose model", null, async (_, _) => await OpenModelsAsync());
         menu.Items.Add("Check for updates", null, async (_, _) => await CheckForUpdatesAsync(manual: true));
         menu.Items.Add(new ToolStripSeparator());
         menu.Items.Add("Exit", null, (_, _) => ExitApp());
@@ -571,6 +577,62 @@ internal sealed class MainForm : Form
         Activate();
     }
 
+    // ---------------------------------------------------------------- models
+
+    private bool _modelsOpen;
+
+    /// <summary>Opens the Models window, where people choose, download, and remove models.</summary>
+    private async Task OpenModelsAsync()
+    {
+        if (_modelsOpen) return;
+        if (_busy)
+        {
+            _speech.Say("Still working. Open the models list when it's finished, or press Escape to cancel.", interrupt: true);
+            return;
+        }
+        ShowFromTray();
+        _modelsOpen = true;
+        bool changed;
+        try
+        {
+            using var form = new ModelsForm(_ollama, _settings, _speech, Log);
+            form.ShowDialog(this);
+            changed = form.ModelChanged;
+        }
+        finally
+        {
+            _modelsOpen = false;
+        }
+
+        if (!changed)
+        {
+            _description.Focus();
+            return;
+        }
+
+        // A new model: start fresh, so follow-up questions don't go to the old picture with the new model.
+        _conversation = null;
+        var title = ModelCatalog.Find(_settings.Model)?.Title ?? _settings.Model;
+        try
+        {
+            if (!_ready && await _ollama.HasModelAsync(_settings.Model))
+            {
+                // Start-up had stopped because no model was downloaded; it's ready now.
+                _ready = true;
+                _lastDescribedKey = string.IsNullOrEmpty(_settings.LastDescribedHash) ? null : _settings.LastDescribedHash;
+                _startupClipboardKey ??= CurrentClipboardKey();
+            }
+        }
+        catch (Exception ex)
+        {
+            Log("Checking model after change: " + ex);
+        }
+        SetStatus(_ready
+            ? $"Using {title}. Copy an image link and press {_hotkey.Description} to describe it."
+            : $"Using {title}, but it isn't downloaded yet. Open Choose model to download it.", speak: false);
+        _description.Focus();
+    }
+
     // ---------------------------------------------------------------- updates
 
     /// <summary>
@@ -695,8 +757,9 @@ internal sealed class MainForm : Form
         $"3. To ask about the image, press Alt Q, type a question such as what color is her hair, and press Enter.{Environment.NewLine}" +
         $"4. Press Escape to hide this window. Describer After Dark keeps running in the system tray. Pressing Escape while it is working cancels.{Environment.NewLine}{Environment.NewLine}" +
         $"If you press the shortcut without copying a new image, or on a link left over from before the program started, you'll be told so instead of hearing an old picture.{Environment.NewLine}" +
+        $"Models: press Alt M, or choose Choose model from the tray icon's menu, to pick a different description model, download one, or remove ones you don't use.{Environment.NewLine}{Environment.NewLine}" +
         $"Updates: when a new version is published, you'll be asked whether to update. Say yes and it installs itself and restarts. You can also choose Check for updates from the tray icon's menu.{Environment.NewLine}{Environment.NewLine}" +
-        $"Keys in this window: Alt D description, Alt Q question, Alt A ask, Alt C describe clipboard, F1 these instructions, Alt H hide.";
+        $"Keys in this window: Alt D description, Alt Q question, Alt A ask, Alt C describe clipboard, Alt M choose model, F1 these instructions, Alt H hide.";
 
     private void ShowInstructions(bool speak)
     {

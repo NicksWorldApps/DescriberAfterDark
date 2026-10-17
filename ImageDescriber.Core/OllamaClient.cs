@@ -138,6 +138,51 @@ public sealed class OllamaClient : IDisposable
         return names;
     }
 
+    /// <summary>Installed models with their size on disk, in bytes.</summary>
+    public async Task<IReadOnlyList<(string Name, long Size)>> ListModelsWithSizesAsync(CancellationToken ct = default)
+    {
+        using var doc = await GetJsonAsync("api/tags", ct);
+        var result = new List<(string, long)>();
+        if (doc.RootElement.TryGetProperty("models", out var models))
+        {
+            foreach (var m in models.EnumerateArray())
+            {
+                if (!m.TryGetProperty("name", out var n) || n.GetString() is not { } name) continue;
+                var size = m.TryGetProperty("size", out var s) && s.TryGetInt64(out var sv) ? sv : 0;
+                result.Add((name, size));
+            }
+        }
+        return result;
+    }
+
+    /// <summary>
+    /// True if the installed model can look at images, false if it's text-only,
+    /// null if Ollama doesn't say (older Ollama versions).
+    /// </summary>
+    public async Task<bool?> CanSeeImagesAsync(string model, CancellationToken ct = default)
+    {
+        using var request = new HttpRequestMessage(HttpMethod.Post, "api/show")
+        {
+            Content = JsonContent.Create(new { model }),
+        };
+        using var response = await SendAsync(request, HttpCompletionOption.ResponseContentRead, ct);
+        if (!response.IsSuccessStatusCode) return null;
+        using var doc = await JsonDocument.ParseAsync(await response.Content.ReadAsStreamAsync(ct), cancellationToken: ct);
+        if (!doc.RootElement.TryGetProperty("capabilities", out var caps) || caps.ValueKind != JsonValueKind.Array) return null;
+        return caps.EnumerateArray().Any(c => string.Equals(c.GetString(), "vision", StringComparison.OrdinalIgnoreCase));
+    }
+
+    /// <summary>Deletes a downloaded model's files, freeing the disk space.</summary>
+    public async Task DeleteModelAsync(string model, CancellationToken ct = default)
+    {
+        using var request = new HttpRequestMessage(HttpMethod.Delete, "api/delete")
+        {
+            Content = JsonContent.Create(new { model }),
+        };
+        using var response = await SendAsync(request, HttpCompletionOption.ResponseContentRead, ct);
+        await EnsureOkAsync(response, ct);
+    }
+
     public async Task<bool> HasModelAsync(string model, CancellationToken ct = default)
     {
         var wanted = NormalizeModelName(model);

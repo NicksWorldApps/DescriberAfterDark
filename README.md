@@ -24,7 +24,22 @@ You need 64-bit Windows 10 or 11 and about 8 GB of free disk space. On first lau
 5. If you press the shortcut without copying anything new, it tells you it's the same image as last time, even after restarting the program, and it warns you about a link that was already on the clipboard before it started; press it again within 10 seconds to describe it again anyway. Press F1 in the window to hear these instructions.
 6. Press Escape to hide the window. The program keeps running in the system tray. Press Escape while it's working to cancel.
 
-Keyboard shortcuts inside the window: Alt+D for the description, Alt+Q for the question box, Alt+A to ask, Alt+C to describe the clipboard, Alt+H to hide.
+Keyboard shortcuts inside the window: Alt+D for the description, Alt+Q for the question box, Alt+A to ask, Alt+C to describe the clipboard, Alt+M to choose a model, F1 for instructions, Alt+H to hide.
+
+## Choosing a model
+
+Press **Alt M** in the main window (or choose **Choose model** from the tray icon's menu) to open the Models list. Each model in the list says its name, whether it's downloaded or in use, its size, and what it's good for. Press **Enter** on one to use it; if it isn't downloaded yet, it offers to download it first. **Alt D** downloads the selected model, **Alt R** removes one you don't use to free disk space, and **Alt A** adds any other Ollama model by name.
+
+| Model | Size | Good for |
+|---|---|---|
+| Qwen3-VL 8B, uncensored (default) | 6.1 GB | Recommended; graphics cards with 8 GB or more |
+| Qwen3-VL 4B, uncensored | 3.3 GB | Faster; 4 to 6 GB graphics cards or no graphics card |
+| Qwen3-VL 2B, uncensored | 1.9 GB | Older or low-powered computers |
+| Qwen3-VL 32B, uncensored | 21 GB | Most detailed; needs a 24 GB graphics card |
+| Qwen 3.5 9B vision, uncensored | 6.6 GB | A different writing style, similar size to the default |
+| Qwen2.5-VL 7B, uncensored | 6.0 GB | Previous generation; alternative to the default |
+| Qwen2.5-VL 3B, uncensored | 3.2 GB | Small previous-generation model |
+| Gemma 3 4B, uncensored | 8.6 GB | Google's Gemma; a different writing style |
 
 ## Updates
 
