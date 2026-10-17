@@ -11,7 +11,7 @@
     <RootNamespace>ImageDescriber.App</RootNamespace>
     <AssemblyName>DescriberAfterDark</AssemblyName>
     <ApplicationHighDpiMode>PerMonitorV2</ApplicationHighDpiMode>
-    <Version>1.0.1</Version>
+    <Version>1.2.0</Version>
     <Product>Describer After Dark</Product>
 
     <!-- Settings used by: dotnet publish -c Release -->

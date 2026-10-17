@@ -1,9 +1,9 @@
 **Adults only (18+).** Describer After Dark describes sexually explicit images in explicit detail.
 
-## What's new in 1.0.1
+## What's new in 1.1.0
 
-- **Fixed:** after closing and restarting the program, pressing the shortcut could describe an old picture still sitting on the clipboard. Now it remembers the last picture it described, even across restarts, and it warns you about anything that was already on the clipboard before it started. Press the shortcut again within 10 seconds if you really do want that picture described.
-- **Fixed:** some large, high-resolution pictures were refused as "too large to describe." There's no practical size limit any more: big pictures are shrunk to a manageable size and described like any other. A link to a video now says so, instead of failing.
+- **Automatic updates.** From now on, when a new version comes out, Describer After Dark asks whether you want it. Say yes and it downloads, installs, and restarts by itself, keeping your settings. It checks when it starts and every few hours, and you can check any time with Check for updates in the tray icon's menu.
+- Includes the 1.0.1 fixes: old pictures are no longer described after a restart, and large pictures are no longer refused as too large.
 
 ## About Describer After Dark
 
@@ -11,4 +11,4 @@
 - Speaks through NVDA, JAWS, and other screen readers, with follow-up questions about the picture.
 - Runs entirely on your own computer through Ollama. No images are sent anywhere.
 
-**To install or update:** exit Describer After Dark from its system tray icon if it's running, download `DescriberAfterDark-1.0.1-win-x64.zip`, extract it, and run `DescriberAfterDark.exe`. Your settings are kept. New users: on first launch it helps you install Ollama and download the description model (about 6 GB). Needs 64-bit Windows 10 or 11.
+**To install:** download the `-win-x64.zip` file below, extract it, and run `DescriberAfterDark.exe`. If you have an older version, exit it from its system tray icon first and extract over it; your settings are kept. This is the last update you need to install by hand: after this, updates install themselves. New users: on first launch it helps you install Ollama and download the description model (about 6 GB). Needs 64-bit Windows 10 or 11.

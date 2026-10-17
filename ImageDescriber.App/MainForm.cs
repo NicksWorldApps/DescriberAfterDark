@@ -26,6 +26,11 @@ internal sealed class MainForm : Form
     private readonly Button _hideButton = new();
     private readonly NotifyIcon _tray = new();
 
+    // Automatic updates from GitHub: checked at start-up and every 6 hours while running.
+    private readonly UpdateChecker _updater = new(AppInfo.UpdateRepository);
+    private readonly System.Windows.Forms.Timer _updateTimer = new() { Interval = 6 * 60 * 60 * 1000 };
+    private Version? _offeredUpdate;
+
     private Conversation? _conversation;
     private CancellationTokenSource? _work;
     private bool _busy;
@@ -143,6 +148,7 @@ internal sealed class MainForm : Form
         var menu = new ContextMenuStrip();
         menu.Items.Add("Show window", null, (_, _) => ShowFromTray());
         menu.Items.Add("Describe clipboard", null, async (_, _) => await DescribeClipboardAsync());
+        menu.Items.Add("Check for updates", null, async (_, _) => await CheckForUpdatesAsync(manual: true));
         menu.Items.Add(new ToolStripSeparator());
         menu.Items.Add("Exit", null, (_, _) => ExitApp());
 
@@ -214,12 +220,28 @@ internal sealed class MainForm : Form
             _ready = true;
             ShowInstructions(speak: false);
             SetStatus($"Describer After Dark version {AppInfo.Version} is ready.", speak: false);
-            _speech.Say($"Describer After Dark version {AppInfo.Version} is ready. " +
+            var args = Environment.GetCommandLineArgs();
+            var updateNote =
+                args.Contains(UpdateInstaller.UpdatedArgument) ? $"Describer After Dark has been updated to version {AppInfo.Version}. " :
+                args.Contains(UpdateInstaller.UpdateFailedArgument) ? "The update couldn't be installed, so nothing changed. It will be offered again later. " :
+                "";
+            UpdateInstaller.CleanUp();
+            _speech.Say(updateNote + $"Describer After Dark version {AppInfo.Version} is ready. " +
                         $"Copy an image link, then press {_hotkey.Description} to describe it. " +
                         "In Luna for Reddit, open a post, press Shift F10, and choose Copy post image link. " +
                         "Full instructions are in the description box, or press F1.", interrupt: true);
-            Log($"Started version {AppInfo.Version}, prompt v{AppInfo.PromptVersion}, model {_settings.Model}, style {_settings.Style}");
+            Log($"Started version {AppInfo.Version}, prompt v{AppInfo.PromptVersion}, model {_settings.Model}, style {_settings.Style}" +
+                (updateNote.Length > 0 ? $" ({updateNote.Trim()})" : ""));
             _description.Focus();
+
+            // Look for an update shortly after start-up (so it doesn't talk over the welcome), then every 6 hours.
+            _updateTimer.Tick += async (_, _) => await CheckForUpdatesAsync(manual: false);
+            _updateTimer.Start();
+            _ = Task.Delay(TimeSpan.FromSeconds(20)).ContinueWith(_ =>
+            {
+                if (!IsDisposed && IsHandleCreated)
+                    BeginInvoke(new Action(async () => await CheckForUpdatesAsync(manual: false)));
+            }, TaskScheduler.Default);
         }
         catch (Exception ex)
         {
@@ -549,6 +571,94 @@ internal sealed class MainForm : Form
         Activate();
     }
 
+    // ---------------------------------------------------------------- updates
+
+    /// <summary>
+    /// Asks GitHub whether a newer version has been published. If so, offers it once per run
+    /// (and again next time the program starts), and installs it if the person says yes.
+    /// </summary>
+    private async Task CheckForUpdatesAsync(bool manual)
+    {
+        if (_exiting) return;
+        if (_busy)
+        {
+            if (manual) _speech.Say("Still working. Try checking for updates when it's finished.", interrupt: true);
+            return;
+        }
+
+        if (manual) SetStatus("Checking for updates...", speak: true);
+        var update = await _updater.CheckAsync(AppInfo.CurrentVersion);
+        if (update is null)
+        {
+            if (manual) SetStatus($"You have the newest version, {AppInfo.Version}.", speak: true);
+            return;
+        }
+        if (!manual && _offeredUpdate == update.Version) return; // already asked during this run
+        _offeredUpdate = update.Version;
+        Log($"Update available: {update.Version} (running {AppInfo.Version})");
+
+        var newVersion = update.Version.ToString(3);
+        ShowFromTray();
+        _speech.Say($"A new version of Describer After Dark is available: version {newVersion}.", interrupt: true);
+        var notes = UpdateChecker.PlainNotes(update.Notes);
+        var answer = MessageBox.Show(this,
+            $"Version {newVersion} of Describer After Dark is available. You have version {AppInfo.Version}.\n\n" +
+            (notes.Length > 0 ? $"What's new:\n{notes}\n\n" : "") +
+            "Update now? It downloads and installs by itself, then Describer After Dark restarts. Your settings are kept.",
+            "Update available", MessageBoxButtons.YesNo, MessageBoxIcon.Information);
+        if (answer != DialogResult.Yes)
+        {
+            SetStatus($"Version {newVersion} wasn't installed. You'll be asked again the next time Describer After Dark starts.", speak: true);
+            return;
+        }
+
+        await InstallUpdateAsync(update);
+    }
+
+    private async Task InstallUpdateAsync(UpdateInfo update)
+    {
+        if (_busy) return;
+        _busy = true;
+        _work = new CancellationTokenSource();
+        var lastSpoken = 0;
+        var progress = new Progress<int>(p =>
+        {
+            SetStatus($"Downloading the update: {p} percent. Press Escape to cancel.");
+            var step = p / 25 * 25;
+            if (step > lastSpoken && step < 100)
+            {
+                lastSpoken = step;
+                _speech.Say($"{step} percent", interrupt: true);
+            }
+        });
+
+        try
+        {
+            SetStatus("Downloading the update. Press Escape to cancel.", speak: true);
+            await UpdateInstaller.PrepareAndLaunchAsync(_updater, update, progress, _work.Token);
+            Log($"Installing update {update.Version}");
+            SetStatus("Installing the update. Describer After Dark will close and start again by itself in a few seconds.", speak: true);
+            await Task.Delay(2500);
+            ExitApp();
+        }
+        catch (OperationCanceledException)
+        {
+            SetStatus("Update cancelled. It will be offered again the next time Describer After Dark starts.", speak: true);
+        }
+        catch (Exception ex)
+        {
+            Log("Update failed: " + ex);
+            SetStatus($"The update couldn't be installed: {ex.Message} It will be offered again later.", speak: true);
+            UpdateInstaller.CleanUp();
+        }
+        finally
+        {
+            _busy = false;
+            _work?.Dispose();
+            _work = null;
+        }
+    }
+
     private void ExitApp()
     {
         _exiting = true;
@@ -562,6 +672,8 @@ internal sealed class MainForm : Form
         if (disposing)
         {
             _hotkey.Dispose();
+            _updateTimer.Dispose();
+            _updater.Dispose();
             _tray.Dispose();
             _speech.Dispose();
             _fetcher.Dispose();
@@ -583,6 +695,7 @@ internal sealed class MainForm : Form
         $"3. To ask about the image, press Alt Q, type a question such as what color is her hair, and press Enter.{Environment.NewLine}" +
         $"4. Press Escape to hide this window. Describer After Dark keeps running in the system tray. Pressing Escape while it is working cancels.{Environment.NewLine}{Environment.NewLine}" +
         $"If you press the shortcut without copying a new image, or on a link left over from before the program started, you'll be told so instead of hearing an old picture.{Environment.NewLine}" +
+        $"Updates: when a new version is published, you'll be asked whether to update. Say yes and it installs itself and restarts. You can also choose Check for updates from the tray icon's menu.{Environment.NewLine}{Environment.NewLine}" +
         $"Keys in this window: Alt D description, Alt Q question, Alt A ask, Alt C describe clipboard, F1 these instructions, Alt H hide.";
 
     private void ShowInstructions(bool speak)

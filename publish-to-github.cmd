@@ -4,7 +4,10 @@ rem Puts Describer After Dark on GitHub, announcing each step as it goes.
 rem Everything is also written to publish-log.txt in this folder.
 rem Run build.cmd first, so the program exists to put in the download.
 cd /d "%~dp0"
-set "VERSION=1.0.1"
+rem The version number comes from the built program itself (set by <Version> in ImageDescriber.App.csproj),
+rem so the release always matches the program. The automatic updater relies on this.
+set "VERSION=unknown"
+if exist "DescriberAfterDark.exe" for /f "delims=" %%v in ('powershell -NoProfile -Command "$v=(Get-Item 'DescriberAfterDark.exe').VersionInfo; '{0}.{1}.{2}' -f $v.FileMajorPart,$v.FileMinorPart,$v.FileBuildPart"') do set "VERSION=%%v"
 set "REPO=DescriberAfterDark"
 set "LOG=%~dp0publish-log.txt"
 echo Describer After Dark publish log, %DATE% %TIME% > "%LOG%"
@@ -103,7 +106,7 @@ gh release view "v%VERSION%" >nul 2>nul
 if errorlevel 1 (
   gh release create "v%VERSION%" "release\DescriberAfterDark-%VERSION%-win-x64.zip" --title "Describer After Dark %VERSION%" --notes-file RELEASE_NOTES.md >> "%LOG%" 2>&1
 ) else (
-  call :say "Version %VERSION% was already on GitHub, so its download is being replaced with this one."
+  call :say "Version %VERSION% was already on GitHub, so its download is being replaced with this one. People who already have %VERSION% won't be asked to update. To send an update to everyone, run new-version.cmd first to raise the version number."
   gh release upload "v%VERSION%" "release\DescriberAfterDark-%VERSION%-win-x64.zip" --clobber >> "%LOG%" 2>&1
 )
 if errorlevel 1 (call :say "Problem: uploading the download failed. Send publish-log.txt for help." & goto end)

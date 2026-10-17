@@ -1,4 +1,4 @@
-# Describer After Dark 1.0.1
+# Describer After Dark
 
 A Windows program, for adults 18 and over only, that describes sexy and explicit pictures for blind people. There are already good describers for safe-for-work images; this one is for the times you want the NSFW pictures described, fully and explicitly, with nothing censored and nothing made up.
 
@@ -8,7 +8,7 @@ On first launch it asks you to confirm you are 18 or older.
 
 ## Download
 
-**[Download the latest version](../../releases/latest)**: get `DescriberAfterDark-1.0.1-win-x64.zip` from the Releases page, extract it, and run `DescriberAfterDark.exe`. You don't need to build anything.
+**[Download the latest version](../../releases/latest)**: get the `-win-x64.zip` file from the Releases page, extract it, and run `DescriberAfterDark.exe`. You don't need to build anything.
 
 You need 64-bit Windows 10 or 11 and about 8 GB of free disk space. On first launch the program helps you install [Ollama](https://ollama.com), the free program that runs the description model, and then downloads the model (about 6 GB).
 
@@ -25,6 +25,10 @@ You need 64-bit Windows 10 or 11 and about 8 GB of free disk space. On first lau
 6. Press Escape to hide the window. The program keeps running in the system tray. Press Escape while it's working to cancel.
 
 Keyboard shortcuts inside the window: Alt+D for the description, Alt+Q for the question box, Alt+A to ask, Alt+C to describe the clipboard, Alt+H to hide.
+
+## Updates
+
+Describer After Dark updates itself. When a new version is published on GitHub, it asks whether you want to update; say yes and it downloads the new version, installs it, and restarts, with your settings kept. It checks when it starts and every few hours while running, and you can check any time with **Check for updates** in the tray icon's menu. If you say no, you'll be asked again next time it starts.
 
 ## Content rules
 
@@ -72,8 +76,13 @@ Problems are written to `%APPDATA%\DescriberAfterDark\log.txt`, including which 
 
 ## Publishing (for the maintainer)
 
-- `make-release.cmd` packs the built program into `release\DescriberAfterDark-<version>-win-x64.zip`.
-- `publish-to-github.cmd` installs Git and the GitHub tool if needed, signs in, uploads the source, and creates the release with that zip. Change `VERSION` at the top of both files (and in `ImageDescriber.Core/AppInfo.cs`) for a new version.
+To release an update to everyone:
+
+1. Run `new-version.cmd` and type the new version number, such as 1.2.0. This is the only place the version is set.
+2. Write what's new at the top of `RELEASE_NOTES.md`, under `## What's new in 1.2.0`. People see this text when they're asked whether to update.
+3. Run `build.cmd`, then `publish-to-github.cmd`.
+
+Everyone running the program is then offered the update automatically. `make-release.cmd` (used by the publish script) packs the built program into `release\DescriberAfterDark-<version>-win-x64.zip`; the version always comes from the built program, so the release and the program can't disagree.
 
 ## License
 

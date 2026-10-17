@@ -3,7 +3,10 @@ setlocal
 rem Packs the built program into a zip people can download and run without building anything.
 rem Run build.cmd first. The zip is created in the "release" folder.
 cd /d "%~dp0"
-set "VERSION=1.0.1"
+rem The version number comes from the built program itself (set by <Version> in ImageDescriber.App.csproj),
+rem so the release always matches the program. The automatic updater relies on this.
+set "VERSION=unknown"
+if exist "DescriberAfterDark.exe" for /f "delims=" %%v in ('powershell -NoProfile -Command "$v=(Get-Item 'DescriberAfterDark.exe').VersionInfo; '{0}.{1}.{2}' -f $v.FileMajorPart,$v.FileMinorPart,$v.FileBuildPart"') do set "VERSION=%%v"
 set "ZIP=release\DescriberAfterDark-%VERSION%-win-x64.zip"
 
 if not exist "DescriberAfterDark.exe" (
