@@ -1,5 +1,10 @@
 **Adults only (18+).** Describer After Dark describes sexually explicit images in explicit detail.
 
+## What's new in 1.2.1
+
+- **Privacy:** the log file no longer records the links of pictures you have described. Describer After Dark never saves pictures or descriptions to your computer; the log now only notes that a picture was described and from which website.
+- Includes everything from 1.2.0: choose, download, and remove models from an accessible list (Alt M).
+
 ## What's new in 1.2.0
 
 - **Choose your model.** Press Alt M in the main window, or choose Choose model from the tray icon's menu, to open the Models list. Arrow through it: each model says its name, whether it's downloaded or in use, its download size, and what it's good for. Press Enter to use one; if it isn't downloaded yet, it offers to download it first.

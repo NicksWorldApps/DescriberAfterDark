@@ -379,7 +379,9 @@ internal sealed class MainForm : Form
                 where = $"from the clipboard ({clip.SourceName})";
             }
 
-            Log($"Describe: copied '{clip.Url ?? clip.SourceName}' -> image {source}, {image.Format}, {image.Width}x{image.Height}, " +
+            // Privacy: the log never records which picture was described, only where it came from in general.
+            var origin = clip.Url is not null && Uri.TryCreate(source, UriKind.Absolute, out var srcUri) ? srcUri.Host : "clipboard";
+            Log($"Describe: image from {origin}, {image.Format}, {image.Width}x{image.Height}, " +
                 $"model {_settings.Model}, style {_settings.Style}, prompt v{AppInfo.PromptVersion}");
 
             if (!await _ollama.EnsureRunningAsync(ct))
