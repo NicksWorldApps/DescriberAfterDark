@@ -4,7 +4,7 @@ rem Puts Describer After Dark on GitHub, announcing each step as it goes.
 rem Everything is also written to publish-log.txt in this folder.
 rem Run build.cmd first, so the program exists to put in the download.
 cd /d "%~dp0"
-set "VERSION=1.0"
+set "VERSION=1.0.1"
 set "REPO=DescriberAfterDark"
 set "LOG=%~dp0publish-log.txt"
 echo Describer After Dark publish log, %DATE% %TIME% > "%LOG%"
@@ -69,6 +69,9 @@ if not exist ".git" git init -b main >> "%LOG%" 2>&1
 rem Commits use GitHub's private no-reply address, so your real email isn't published.
 git config user.name "!GHUSER!"
 git config user.email "!GHID!+!GHUSER!@users.noreply.github.com"
+rem Keep files exactly as they are, and skip Git's line-ending warnings.
+git config core.autocrlf false
+git config core.safecrlf false
 git add -A >> "%LOG%" 2>&1
 git diff --cached --quiet
 if errorlevel 1 (
@@ -86,8 +89,8 @@ if errorlevel 1 (
   gh repo create %REPO% --public --source . --remote origin --push --description "Uncensored, adults-only image describer for blind and visually impaired people. Runs locally on Windows." >> "%LOG%" 2>&1
   if errorlevel 1 (call :say "Problem: creating the repository failed. Send publish-log.txt for help." & goto end)
 ) else (
-  git remote get-url origin >nul 2>nul || git remote add origin "https://github.com/!GHUSER!/%REPO%.git"
-  git push -u origin main >> "%LOG%" 2>&1
+  call :say "The repository already exists, so this version is being added on top of what's there."
+  call :sync_existing
   if errorlevel 1 (call :say "Problem: uploading failed. Send publish-log.txt for help." & goto end)
 )
 call :say "Step 5 done. The source code is on GitHub."
@@ -120,4 +123,23 @@ exit /b
 :say
 echo %~1
 echo %~1 >> "%LOG%"
+exit /b 0
+
+:sync_existing
+rem Works from any folder, even a freshly extracted one with no history:
+rem it takes the latest version from GitHub as the starting point, puts this folder's files on top
+rem as one new change, and uploads that. Nothing already on GitHub is lost.
+git remote get-url origin >nul 2>nul || git remote add origin "https://github.com/%GHUSER%/%REPO%.git"
+git remote set-url origin "https://github.com/%GHUSER%/%REPO%.git"
+git fetch origin >> "%LOG%" 2>&1
+if errorlevel 1 exit /b 1
+git rev-parse --verify --quiet origin/main >nul 2>nul
+if errorlevel 1 goto sync_push
+git reset --soft origin/main >> "%LOG%" 2>&1
+git add -A >> "%LOG%" 2>&1
+git diff --cached --quiet
+if errorlevel 1 git commit -q -m "Describer After Dark %VERSION%" >> "%LOG%" 2>&1
+:sync_push
+git push -u origin main >> "%LOG%" 2>&1
+if errorlevel 1 exit /b 1
 exit /b 0

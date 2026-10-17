@@ -17,7 +17,11 @@ public sealed class ImageFetchException(string message, Exception? inner = null)
 /// </summary>
 public sealed partial class ImageFetcher : IDisposable
 {
-    private const long MaxBytes = 40L * 1024 * 1024;
+    /// <summary>
+    /// Only a safety net against a link that turns out to be a huge video or other file, not a picture.
+    /// Real images are far smaller than this; large ones are shrunk before being described.
+    /// </summary>
+    private const long MaxBytes = 2L * 1024 * 1024 * 1024 - 1;
 
     private readonly HttpClient _http;
 
@@ -265,8 +269,11 @@ public sealed partial class ImageFetcher : IDisposable
                 throw new ImageFetchException($"I couldn't download that image: {why}.");
             }
 
+            var mediaType = response.Content.Headers.ContentType?.MediaType ?? "";
+            if (mediaType.StartsWith("video/", StringComparison.OrdinalIgnoreCase))
+                throw new ImageFetchException("That link is a video, not a picture. Copy the post link instead, and the video's preview picture will be described.");
             if (response.Content.Headers.ContentLength > MaxBytes)
-                throw new ImageFetchException("That image is too large to describe.");
+                throw new ImageFetchException("That link points to a file of over 2 gigabytes, which isn't a picture.");
 
             await using var stream = await response.Content.ReadAsStreamAsync(ct);
             using var buffer = new MemoryStream();
@@ -275,7 +282,7 @@ public sealed partial class ImageFetcher : IDisposable
             while ((read = await stream.ReadAsync(chunk, ct)) > 0)
             {
                 buffer.Write(chunk, 0, read);
-                if (buffer.Length > MaxBytes) throw new ImageFetchException("That image is too large to describe.");
+                if (buffer.Length > MaxBytes) throw new ImageFetchException("That link points to a file of over 2 gigabytes, which isn't a picture.");
             }
 
             var finalUri = response.RequestMessage?.RequestUri ?? uri;

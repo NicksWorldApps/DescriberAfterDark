@@ -3,7 +3,7 @@ setlocal
 rem Packs the built program into a zip people can download and run without building anything.
 rem Run build.cmd first. The zip is created in the "release" folder.
 cd /d "%~dp0"
-set "VERSION=1.0"
+set "VERSION=1.0.1"
 set "ZIP=release\DescriberAfterDark-%VERSION%-win-x64.zip"
 
 if not exist "DescriberAfterDark.exe" (

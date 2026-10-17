@@ -37,6 +37,10 @@ internal sealed class MainForm : Form
     private string? _lastDescribedKey;
     private DateTime _sameImageWarnedAt = DateTime.MinValue;
 
+    // Whatever was on the clipboard when the program started. It's left over from before,
+    // so pressing the shortcut on it gets a warning instead of an old picture.
+    private string? _startupClipboardKey;
+
     public MainForm()
     {
         _ollama = new OllamaClient(_settings.OllamaUrl);
@@ -205,6 +209,8 @@ internal sealed class MainForm : Form
                 if (!await DownloadModelAsync()) return;
             }
 
+            _lastDescribedKey = string.IsNullOrEmpty(_settings.LastDescribedHash) ? null : _settings.LastDescribedHash;
+            _startupClipboardKey = CurrentClipboardKey();
             _ready = true;
             ShowInstructions(speak: false);
             SetStatus($"Describer After Dark version {AppInfo.Version} is ready.", speak: false);
@@ -306,13 +312,18 @@ internal sealed class MainForm : Form
             return;
         }
 
-        // Catch the easy mistake of pressing the shortcut without copying a new image.
-        var key = clip.Url ?? HashOf(clip.Image!.Base64);
-        if (key == _lastDescribedKey && DateTime.Now - _sameImageWarnedAt > TimeSpan.FromSeconds(10))
+        // Catch the easy mistake of pressing the shortcut without copying a new image,
+        // including a link left on the clipboard from before the program was started.
+        var key = KeyOf(clip);
+        var stale = key == _lastDescribedKey ? "same" : key == _startupClipboardKey ? "old" : null;
+        if (stale is not null && DateTime.Now - _sameImageWarnedAt > TimeSpan.FromSeconds(10))
         {
             _sameImageWarnedAt = DateTime.Now;
-            SetStatus("That's the same image you just described. Copy a new image link first. " +
-                      $"To describe this one again anyway, press {_hotkey.Description} again within 10 seconds.", speak: true);
+            var why = stale == "same"
+                ? "That's the same image you described last time."
+                : "That image was already on the clipboard before Describer After Dark started, so it's probably an old one.";
+            SetStatus($"{why} Copy a new image link first. " +
+                      $"To describe this one anyway, press {_hotkey.Description} again within 10 seconds.", speak: true);
             return;
         }
         _sameImageWarnedAt = DateTime.MinValue;
@@ -352,6 +363,9 @@ internal sealed class MainForm : Form
             var text = await _conversation.DescribeAsync(ct);
 
             _lastDescribedKey = key;
+            _startupClipboardKey = null; // a new image has been described, so the startup one no longer matters
+            _settings.LastDescribedHash = key;
+            try { _settings.Save(); } catch { /* not remembering this across restarts isn't fatal */ }
             _description.Text = text;
             _description.Focus();
             _description.SelectionStart = 0;
@@ -568,7 +582,7 @@ internal sealed class MainForm : Form
         $"2. Press {_hotkey.Description} from anywhere. The image is downloaded and described, and your screen reader speaks the description.{Environment.NewLine}" +
         $"3. To ask about the image, press Alt Q, type a question such as what color is her hair, and press Enter.{Environment.NewLine}" +
         $"4. Press Escape to hide this window. Describer After Dark keeps running in the system tray. Pressing Escape while it is working cancels.{Environment.NewLine}{Environment.NewLine}" +
-        $"If you press the shortcut without copying a new image, you'll be told it's the same image as last time.{Environment.NewLine}" +
+        $"If you press the shortcut without copying a new image, or on a link left over from before the program started, you'll be told so instead of hearing an old picture.{Environment.NewLine}" +
         $"Keys in this window: Alt D description, Alt Q question, Alt A ask, Alt C describe clipboard, F1 these instructions, Alt H hide.";
 
     private void ShowInstructions(bool speak)
@@ -578,6 +592,24 @@ internal sealed class MainForm : Form
         _description.SelectionLength = 0;
         _description.Focus();
         if (speak) _speech.Say(Instructions.Replace(Environment.NewLine, " "), interrupt: true);
+    }
+
+    /// <summary>
+    /// A fingerprint of the clipboard contents. Only this hash is ever saved, never the link or image itself.
+    /// </summary>
+    private static string KeyOf(ClipboardContent clip) => HashOf(clip.Url ?? clip.Image!.Base64);
+
+    private string? CurrentClipboardKey()
+    {
+        try
+        {
+            var clip = ReadClipboard();
+            return clip.Error is null ? KeyOf(clip) : null;
+        }
+        catch
+        {
+            return null;
+        }
     }
 
     private static string HashOf(string text) =>

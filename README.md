@@ -1,4 +1,4 @@
-# Describer After Dark 1.0
+# Describer After Dark 1.0.1
 
 A Windows program, for adults 18 and over only, that describes sexy and explicit pictures for blind people. There are already good describers for safe-for-work images; this one is for the times you want the NSFW pictures described, fully and explicitly, with nothing censored and nothing made up.
 
@@ -8,7 +8,7 @@ On first launch it asks you to confirm you are 18 or older.
 
 ## Download
 
-**[Download the latest version](../../releases/latest)**: get `DescriberAfterDark-1.0-win-x64.zip` from the Releases page, extract it, and run `DescriberAfterDark.exe`. You don't need to build anything.
+**[Download the latest version](../../releases/latest)**: get `DescriberAfterDark-1.0.1-win-x64.zip` from the Releases page, extract it, and run `DescriberAfterDark.exe`. You don't need to build anything.
 
 You need 64-bit Windows 10 or 11 and about 8 GB of free disk space. On first launch the program helps you install [Ollama](https://ollama.com), the free program that runs the description model, and then downloads the model (about 6 GB).
 
@@ -21,7 +21,7 @@ You need 64-bit Windows 10 or 11 and about 8 GB of free disk space. On first lau
 2. Press **Control Alt D** from anywhere.
 3. The window comes up, the image is downloaded and described, and your screen reader speaks the description. The text is also in the Description box to review with the arrow keys.
 4. Type a follow-up question in the question box and press Enter, for example "what color is her nail polish?" The answer is spoken and added to the end of the Description box.
-5. If you press the shortcut without copying anything new, it tells you it's the same image as last time; press it again within 10 seconds to describe it again anyway. Press F1 in the window to hear these instructions.
+5. If you press the shortcut without copying anything new, it tells you it's the same image as last time, even after restarting the program, and it warns you about a link that was already on the clipboard before it started; press it again within 10 seconds to describe it again anyway. Press F1 in the window to hear these instructions.
 6. Press Escape to hide the window. The program keeps running in the system tray. Press Escape while it's working to cancel.
 
 Keyboard shortcuts inside the window: Alt+D for the description, Alt+Q for the question box, Alt+A to ask, Alt+C to describe the clipboard, Alt+H to hide.

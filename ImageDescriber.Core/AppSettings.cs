@@ -29,6 +29,12 @@ public sealed class AppSettings
     public DescriptionStyle Style =>
         Enum.TryParse<DescriptionStyle>(DescriptionStyle, ignoreCase: true, out var s) ? s : Core.DescriptionStyle.Sensual;
 
+    /// <summary>
+    /// Fingerprint (SHA-256 hash) of the last image described, so the same-image warning still works after a restart.
+    /// It's a one-way hash: the link or picture can't be recovered from it.
+    /// </summary>
+    public string LastDescribedHash { get; set; } = "";
+
     /// <summary>Set once the user has confirmed on first launch that they are 18 or older.</summary>
     public bool AgeConfirmed { get; set; }
 
