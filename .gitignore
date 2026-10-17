@@ -1,0 +1,12 @@
+# Build output
+bin/
+obj/
+build-log.txt
+release/
+publish/
+
+# The built program in the main folder (people download it from Releases instead)
+/DescriberAfterDark.exe
+/prism.dll
+/third-party-licenses/
+publish-log.txt
